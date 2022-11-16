@@ -23,17 +23,17 @@ The key points here are:
     The GitOps controller is running in a constant loop and always matches the Git state with the cluster state.
 # GitOps use cases:
 
--> Continuous deployment of applications: 
++ Continuous deployment of applications: 
 Popular use of GitOps and the one that is applicable to most organizations. Using GitOps for the applications developed by your own organization is one of the most straightforward scenarios for applying GitOps and seeing the benefits it offers.
--> Continuous deployment of cluster resources:
++ Continuous deployment of cluster resources:
 After you adopt GitOps for your own applications, it makes sense to embrace the same principles for your supporting applications that you manage but not necessarily develop. In the case of Kubernetes, these are the applications that take part in the cluster such as metrics, networking agents, service meshes, database, etc.
--> Continuous deployment of infrastructure:
++ Continuous deployment of infrastructure:
 Adopting GitOps for the application is a great step, but you can continue this paradigm to other layers of the infrastructure. If you have a way to define your resources in a declarative way, it should be very easy to adopt the GitOps principles for the infrastructure that powers your applications.
--> Detecting/Avoiding configuration drift:
++ Detecting/Avoiding configuration drift:
 This is a great way to detect manual (or even unauthorized) changes in your cluster.
 Configuration drift between what you think is on a server and what is actually on the server is one of the most common causes of failed deployments.
 In the case of Kubernetes, performing manual changes via kubectl is a practice that GitOps can completely eliminate. And even if somebody makes some changes using kubectl, your GitOps agents should notify you immediately. Then it is up to you decide if you want to discard them (and whatever Git has) or accept them (and commit them back to Git)
--> Multi-cluster deployments:
++ Multi-cluster deployments:
 Deploying to a single cluster is already a challenge on its own. If you have multiple clusters at different geographical locations or with different configurations, you need a way to track them and understand how they are different.
 This is one of the cases where GitOps really shines. Because the state of all clusters is stored in Git, it is very easy to know what is installed where, who installed it, and when just by looking at the Git history.
 A very common question when it comes to multiple environments is finding out what is different between them. If you follow GitOps, the answer is always there just by doing a simple git diff.
@@ -54,17 +54,15 @@ Some Pros of GitOps:
 
 
 There are several questions that you need to answer before making a decision about installation:
+    - Will your Argo CD installation manage only the cluster on which it is installed? Will it manage other clusters? Both?
+    - Do you want a High Availability (HA) installation or not?
+    - Do you want to use plain manifests or are you looking for a Helm chart?
+    - How will you manage Argo CD upgrades? With an external system? Or do you wish for Argo CD to manage itself?
 
-    Will your Argo CD installation manage only the cluster on which it is installed? Will it manage other clusters? Both?
-    Do you want a High Availability (HA) installation or not?
-    Do you want to use plain manifests or are you looking for a Helm chart?
-    How will you manage Argo CD upgrades? With an external system? Or do you wish for Argo CD to manage itself?
 ## Installation
 For quick demos and experimentation, you can deploy ArgoCD by directly using the manifests:
     ```
     kubectl create namespace argocd
-    ```
-    ```
     kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
     ```
 To get the default password use the command bellow:
@@ -74,6 +72,7 @@ To get the default password use the command bellow:
     ```
 
 ARGO CLI installation:
+
     ```
     curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/download/v2.1.5/argocd-linux-amd64
     chmod +x /usr/local/bin/argocd
@@ -84,14 +83,18 @@ For a production setup we suggest you use "Autopilot"  or chart helm
 
 Login with CLI:
 
-We use the insecure option because Argo CD has a self-signed certificate. In a production installation you would have a real certificate and this option should not be used.*
+We use the insecure option because Argo CD has a self-signed certificate. In a production installation you would have a real certificate and this option should not be used.
+
     ```
     argocd login localhost:30443 --insecure
     ```
+
 To get app list use the command bellow:
+
     ```
     argocd app list
     ```
+
 ## User management
 Once the external URL is ready, you need to decide how users will access the Argo CD UI. There are mainly two approaches:
 
@@ -104,20 +107,25 @@ You can read all the details at https://argo-cd.readthedocs.io/en/stable/operato
 ## Creating an ArgoCD application
 - navigate to the +NEW APP on the left-hand side of the UI. 
 - using ArgoCD CLI:
+
     ```
     argocd app create {APP NAME} --project {PROJECT} --repo {GIT REPO} --path {APP FOLDER} --dest-namespace {NAMESPACE} --dest-server {SERVER URL}
     ```
+
     PS: Use https://kubernetes.default.svc to reference the same cluster where Argo CD has been deployed
     For a more detailed view of the application configuration, run:
+
         ```
         argocd app get {APP NAME}
         ```
 ## Syncing an ArgoCD application
 ### manual sync:
 To sync the app using cli:
+
 ```
 argocd app sync {APP NAME}
 ```
+
 Examples:
 
 - The UI starts empty because nothing is deployed on our cluster. Click the "New app" button on the top left and fill the following details:
@@ -139,19 +147,26 @@ You will see that nothing is deployed yet. The cluster is still empty. The "Out 
     argocd app get demo
     argocd app history demo
     ```
-    delete the previous app to redploy it usinf cli:
+
+    delete the previous app to redploy it using cli:
+
     ```
     argocd app delete demo
     ```
     deploy the app:
+
     ```
     argocd app create demo2 --project default --repo https://github.com/codefresh-contrib/gitops-certification-examples --path "./simple-app" --dest-namespace default --dest-server https://kubernetes.default.svc
     ```
+
     sync the app: 
+
     ```
     argocd app sync demo2
    ```
+
 ### auto-sync:
+
 By default, the sync period is 3 minutes. This means that every 3 minutes Argo CD will:
 
     Gather all applications that are marked to auto-sync.
@@ -181,10 +196,82 @@ The possible Status of an application are:
     “Degraded” -> Resource status indicates failure or resource could not reach healthy state in time
     “Unknown” -> Health assessment failed and actual health status is unknown
 
+## Sync strategies:
+
+
+There are 3 parameters that you can change when defining the sync strategy:
+   1. Manual or automatic sync.
+   2. Auto-pruning of resources - this is only applicable for automatic sync.
+   3. Self-Heal of cluster - this is only applicable for automatic sync.
+### Auto-pruning:
+Auto-pruning defines what Argo CD does when you remove/delete files from Git. If it is enabled, Argo CD will also remove the respective resources in the cluster as well. If disabled, Argo CD will never delete anything from the cluster.
+### Self-heal:
+Self-heal defines what Argo CD does when you make changes directly to the cluster (via kubectl or any other way). Note that doing manual changes in the cluster is not recommended if you want to follow GitOps principles (as all changes should pass from Git). If enabled, then Argo CD will discard the extra changes and bring the cluster back to the state described in Git.
+
+## Managing secrets:
+
+We Can Vault or Bitnami Sealed
+Sealed secrets: https://learning.codefresh.io/path-player?courseid=gitops-with-argo&unit=gitops-with-argo_6177d8794fc59Unit
+
+This link contain  an example of encryption with Sealed: https://github.com/samiamerni/gitops-certification-examples/tree/main/secret-app
+
+The folder never-commit-to-git/unsealed_secrets/ under secret-app containt the secrets yaml file that we should encrypt.
+
+To encrypt the secrets use: 
+
+```
+kubeseal < unsealed_secrets/db-creds.yml > sealed_secrets/db-creds-encrypted.yaml -o yaml
+kubeseal < unsealed_secrets/paypal-cert.yml > sealed_secrets/paypal-cert-encrypted.yaml -o yaml
+```
+
+Copy the generated files into TOu repo git, then deploy your application using ArgoCD UI (The Sealed secrets controller will automatically decrypt secrets and pass them to your application)
+
+## Declarative Setup:
+
+Using the Argo CD UI for creating applications is great for experimentation and onboarding. However, in a production environment, you should use Git for all operations instead.
+
+To achieve this goal, Argo CD comes with its own custom resources that can be stored in Git, and applied in a cluster using kubectl or even better Argo CD itself.
+
+For the full details of all Argo CD objects, you should consult: https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/ 
+
+### Example declarative setup:
+ArgoCD applications must be deployed in the same namespace as ArgoCD itself.
+
+See the example under the link:  https://github.com/samiamerni/gitops-certification-examples/blob/main/declarative
+
+## deploying with Helm /kustomize
+
+Something important to note is that Argo CD provides native support for Helm, meaning you can directly connect a packaged Helm chart and Argo CD will monitor it for new versions. When this takes place, the Helm chart will no longer function as a Helm chart and instead, is rendered with the Helm template when Argo is installed, using the Argo CD application manifest.
+
+Argo CD then deploys and monitors the application components until both states are identical. The application is no longer a Helm application and is now recognized as an Argo app that can only operated by Argo CD. Hence if you execute the helm list command, you should no longer be able to view your helm release because the Helm metadata no longer exists.
+
+Note that if you use any of the helm commands such as helm list you will not see anything at all. A Helm chart deployed by ArgoCD no longer registers as a Helm deployment. This is because ArgoCD doesn't include the Helm payload information. When deploying a Helm application, Argo CD runs "helm template" and deploys the resulting manifests.
+
+Using CLI:
+```
+argocd app list
+argocd app get helm-gitops-example
+argocd app history helm-gitops-example
+argocd app delete helm-gitops-example
+argocd app create demo --project default --repo https://github.com/codefresh-contrib/gitops-certification-examples --path "./helm-app/" --sync-policy auto --dest-namespace default --dest-server https://kubernetes.default.svc
+```
+
+## Progressive Delivery:
+
+Progressive Delivery is the practice of deploying an application in a gradual manner allowing for minimum downtime and easy rollbacks.
+
+### Blue Grenn deployments:
+
+Blue/Green deployments are one of the simplest ways to minimize deployment downtime. Blue/Green deployments are not specific to Kubernetes and can be used even for traditional applications that reside on Virtual Machines.
+
+### Canary deployment:
+
+Blue/Green deployments are great for minimizing downtime after a deployment, but they are not perfect. If your new version has a hidden issue that manifests itself only after some time (i.e. it is not detected by your smoke tests), then all your users will be affected because the traffic switch is all or nothing.
+
+An improved deployment method is canary deployments. This functions similar to blue/green, but instead of switching 100% of live traffic all at once to the new version, you can instead move only a subset of users.
 
 
 
-=========================> je me suis arreté la : https://learning.codefresh.io/path-player?courseid=gitops-with-argo&unit=gitops-with-argo_6177d83dc2377Unit
 #  commands to remember: 
 
 ```
