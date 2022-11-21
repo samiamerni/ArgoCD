@@ -264,12 +264,28 @@ Progressive Delivery is the practice of deploying an application in a gradual ma
 
 Blue/Green deployments are one of the simplest ways to minimize deployment downtime. Blue/Green deployments are not specific to Kubernetes and can be used even for traditional applications that reside on Virtual Machines.
 
+An exmaple of rollout blue/green: https://github.com/samiamerni/gitops-certification-examples/tree/main/blue-green-app
+
+```
+kubectl argo rollouts list rollouts
+kubectl argo rollouts status simple-rollout
+kubectl argo rollouts get rollout simple-rollout
+kubectl argo rollouts set image simple-rollout webserver-simple=docker.io/kostiscodefresh/gitops-canary-app:v2.0
+kubectl argo rollouts get rollout simple-rollout
+kubectl argo rollouts promote simple-rollout
+kubectl argo rollouts get rollout simple-rollout --watch
+```
+
 ### Canary deployment:
 
 Blue/Green deployments are great for minimizing downtime after a deployment, but they are not perfect. If your new version has a hidden issue that manifests itself only after some time (i.e. it is not detected by your smoke tests), then all your users will be affected because the traffic switch is all or nothing.
 
 An improved deployment method is canary deployments. This functions similar to blue/green, but instead of switching 100% of live traffic all at once to the new version, you can instead move only a subset of users.
 
+Canry rollout gives 3 kubernetes serveices:
+- rollout-canary-all-traffic: service is capturing all live traffic from actual users of the application
+- rollout-canary-active: this will always point to the stable/previous version of the software.
+- rollout-canary-preview: this will only route traffic to the canary/new versions
 
 
 #  commands to remember: 
