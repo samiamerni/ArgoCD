@@ -70,6 +70,11 @@ To get the default password use the command bellow:
     ```
     kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d > admin-pass.txt
     ```
+To expose Argocd
+    ```
+    kubectl expose -n argocd svc/argocd-server  --port 8080   --name argocd-ext  --type NodePort
+    ```
+
 
 ARGO CLI installation:
 
@@ -213,11 +218,33 @@ Self-heal defines what Argo CD does when you make changes directly to the cluste
 We Can Vault or Bitnami Sealed
 Sealed secrets: https://learning.codefresh.io/path-player?courseid=gitops-with-argo&unit=gitops-with-argo_6177d8794fc59Unit
 
+### installation of sealed secret controller:
+
+```
+helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
+helm repo update
+helm install sealed-secrets-controller sealed-secrets/sealed-secrets 
+```
+### installation of sealed cli:
+
+```
+wget https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.19.2/kubeseal-0.19.2-linux-amd64.tar.gz
+tar -xvzf kubeseal-<version>-linux-amd64.tar.gz kubeseal
+install -m 755 kubeseal /usr/local/bin/kubeseal
+```
+### example of enryption 
 This link contain  an example of encryption with Sealed: https://github.com/samiamerni/gitops-certification-examples/tree/main/secret-app
 
 The folder never-commit-to-git/unsealed_secrets/ under secret-app containt the secrets yaml file that we should encrypt.
 
 To encrypt the secrets use: 
+
+kubectl create secret generic secret-name --dry-run=client --from-literal=foo=bar -o [json|yaml] | \
+    kubeseal \
+      --controller-name=sealed-secrets-controller \
+      --controller-namespace=sealed-secrets \
+      --format yaml > mysealedsecret.[json|yaml]
+
 
 ```
 kubeseal < unsealed_secrets/db-creds.yml > sealed_secrets/db-creds-encrypted.yaml -o yaml
@@ -296,3 +323,35 @@ argocd app get demo
 argocd app history demo
 argocd app delete demo
 ```
+
+
+
+
+1. Install the client-side tool (kubeseal) as explained in the docs below:
+
+    https://github.com/bitnami-labs/sealed-secrets#installation-from-source
+
+2. Create a sealed secret file running the command below:
+
+    kubectl create secret generic secret-name --dry-run=client --from-literal=foo=bar -o [json|yaml] | \
+    kubeseal \
+      --controller-name=sealed-secrets-controller \
+      --controller-namespace=default \
+      --format yaml > mysealedsecret.[json|yaml]
+
+The file mysealedsecret.[json|yaml] is a commitable file.
+
+If you would rather not need access to the cluster to generate the sealed secret you can run:
+
+    kubeseal \
+      --controller-name=sealed-secrets-controller \
+      --controller-namespace=default \
+      --fetch-cert > mycert.pem
+
+to retrieve the public cert used for encryption and store it locally. You can then run 'kubeseal --cert mycert.pem' instead to use the local cert e.g.
+
+    kubectl create secret generic secret-name --dry-run=client --from-literal=foo=bar -o [json|yaml] | \
+    kubeseal \
+      --controller-name=sealed-secrets-controller \
+      --controller-namespace=default \
+      --format [json|yaml] --cert mycert.pem > mysealedsecret.[json|yaml]

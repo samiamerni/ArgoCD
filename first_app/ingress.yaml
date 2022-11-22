@@ -4,11 +4,14 @@ metadata:
   name: guestbook-ui-ingress
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
+    #nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    #kubernetes.io/ingress.class: ingress-nginx
 spec:
+  ingressClassName: nginx
   rules:
   - http:
       paths:
-      - path: /testpath
+      - path: /nginx
         pathType: Prefix
         backend:
           service:
