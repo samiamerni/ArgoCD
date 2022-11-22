@@ -3,7 +3,7 @@ kind: Application
 metadata:
   name: demo
   # You'll usually want to add your resources to the argocd namespace.
-  namespace: argocd-tests
+  namespace: argocd
   # Add a this finalizer ONLY if you want these to cascade delete.
   #finalizers:
     #- resources-finalizer.argocd.argoproj.io
@@ -23,7 +23,7 @@ spec:
   # Destination cluster and namespace to deploy the application
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: argocd-tests
 
   # Sync policy
   syncPolicy:
