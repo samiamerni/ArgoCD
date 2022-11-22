@@ -239,17 +239,21 @@ The folder never-commit-to-git/unsealed_secrets/ under secret-app containt the s
 
 To encrypt the secrets use: 
 
-kubectl create secret generic secret-name --dry-run=client --from-literal=foo=bar -o [json|yaml] | \
+    ```
+    kubectl create secret generic secret-name --dry-run=client --from-literal=foo=bar -o [json|yaml] | \
     kubeseal \
       --controller-name=sealed-secrets-controller \
       --controller-namespace=sealed-secrets \
       --format yaml > mysealedsecret.[json|yaml]
+    ```
 
+    example:
+     kubeseal --controller-name=sealed-secrets-controller --controller-namespace=sealed-secrets -n argocd-tests --secret-file=secret-redis.yaml   --format yaml > mysealedsecret.yaml
 
-```
-kubeseal < unsealed_secrets/db-creds.yml > sealed_secrets/db-creds-encrypted.yaml -o yaml
-kubeseal < unsealed_secrets/paypal-cert.yml > sealed_secrets/paypal-cert-encrypted.yaml -o yaml
-```
+    ```
+    kubeseal < unsealed_secrets/db-creds.yml > sealed_secrets/db-creds-encrypted.yaml -o yaml
+    kubeseal < unsealed_secrets/paypal-cert.yml > sealed_secrets/paypal-cert-encrypted.yaml -o yaml
+    ```
 
 Copy the generated files into TOu repo git, then deploy your application using ArgoCD UI (The Sealed secrets controller will automatically decrypt secrets and pass them to your application)
 
